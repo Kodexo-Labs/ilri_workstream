@@ -1,0 +1,88 @@
+{
+  "title": "Two further items",
+  "source_type": "Compilation of two synthetic items: an Outlook calendar entry and a SharePoint document excerpt",
+  "date": null,
+  "date_reasoning": "No date is given for when this compilation document itself was written. It contains a calendar entry (cancelled 24 July 2026) and a SharePoint file with a \"Last modified: 12 June 2026\" stamp, but these are dates of the referenced items, not of this document's authorship. The heading \"Synthetic\" and lack of any authoring date means null is appropriate.",
+  "segments": [
+    {
+      "start_line": 1,
+      "end_line": 1,
+      "kind": "heading"
+    },
+    {
+      "start_line": 3,
+      "end_line": 3,
+      "kind": "paragraph"
+    },
+    {
+      "start_line": 7,
+      "end_line": 7,
+      "kind": "heading"
+    },
+    {
+      "start_line": 9,
+      "end_line": 9,
+      "kind": "table_row"
+    },
+    {
+      "start_line": 11,
+      "end_line": 11,
+      "kind": "table_row"
+    },
+    {
+      "start_line": 12,
+      "end_line": 12,
+      "kind": "table_row"
+    },
+    {
+      "start_line": 13,
+      "end_line": 13,
+      "kind": "table_row"
+    },
+    {
+      "start_line": 14,
+      "end_line": 14,
+      "kind": "table_row"
+    },
+    {
+      "start_line": 15,
+      "end_line": 15,
+      "kind": "table_row"
+    },
+    {
+      "start_line": 16,
+      "end_line": 16,
+      "kind": "table_row"
+    },
+    {
+      "start_line": 20,
+      "end_line": 20,
+      "kind": "heading"
+    },
+    {
+      "start_line": 22,
+      "end_line": 22,
+      "kind": "paragraph"
+    },
+    {
+      "start_line": 23,
+      "end_line": 23,
+      "kind": "paragraph"
+    },
+    {
+      "start_line": 25,
+      "end_line": 25,
+      "kind": "quote"
+    },
+    {
+      "start_line": 27,
+      "end_line": 27,
+      "kind": "quote"
+    },
+    {
+      "start_line": 29,
+      "end_line": 29,
+      "kind": "quote"
+    }
+  ]
+}

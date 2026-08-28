@@ -1,0 +1,58 @@
+{
+  "title": "RE: East Africa surveillance agreements — status ahead of Q3",
+  "source_type": "Email",
+  "date": "2026-07-22",
+  "date_reasoning": "The header line explicitly states 'Email — 22 July 2026, 16:08 EAT', which is the timestamp of the email itself, not a date it merely mentions.",
+  "segments": [
+    {
+      "start_line": 1,
+      "end_line": 1,
+      "kind": "heading"
+    },
+    {
+      "start_line": 3,
+      "end_line": 3,
+      "kind": "paragraph"
+    },
+    {
+      "start_line": 5,
+      "end_line": 8,
+      "kind": "paragraph"
+    },
+    {
+      "start_line": 10,
+      "end_line": 10,
+      "kind": "paragraph"
+    },
+    {
+      "start_line": 12,
+      "end_line": 12,
+      "kind": "paragraph"
+    },
+    {
+      "start_line": 14,
+      "end_line": 14,
+      "kind": "list_item"
+    },
+    {
+      "start_line": 16,
+      "end_line": 16,
+      "kind": "list_item"
+    },
+    {
+      "start_line": 18,
+      "end_line": 18,
+      "kind": "list_item"
+    },
+    {
+      "start_line": 20,
+      "end_line": 20,
+      "kind": "paragraph"
+    },
+    {
+      "start_line": 22,
+      "end_line": 22,
+      "kind": "paragraph"
+    }
+  ]
+}

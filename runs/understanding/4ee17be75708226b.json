@@ -1,0 +1,48 @@
+{
+  "title": "Microsoft Teams — 6 August 2026",
+  "source_type": "Teams chat",
+  "date": "2026-08-06",
+  "date_reasoning": "The heading gives the date of the chat itself, 6 August 2026, and the messages carry timestamps from that day.",
+  "segments": [
+    {
+      "start_line": 1,
+      "end_line": 1,
+      "kind": "heading"
+    },
+    {
+      "start_line": 3,
+      "end_line": 3,
+      "kind": "paragraph"
+    },
+    {
+      "start_line": 5,
+      "end_line": 6,
+      "kind": "chat_message"
+    },
+    {
+      "start_line": 8,
+      "end_line": 9,
+      "kind": "chat_message"
+    },
+    {
+      "start_line": 11,
+      "end_line": 12,
+      "kind": "chat_message"
+    },
+    {
+      "start_line": 14,
+      "end_line": 15,
+      "kind": "chat_message"
+    },
+    {
+      "start_line": 17,
+      "end_line": 18,
+      "kind": "chat_message"
+    },
+    {
+      "start_line": 20,
+      "end_line": 21,
+      "kind": "chat_message"
+    }
+  ]
+}

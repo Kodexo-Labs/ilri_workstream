@@ -1,0 +1,53 @@
+{
+  "title": "Meeting note — Animal Health Delivery monthly review",
+  "source_type": "Meeting note",
+  "date": "2026-08-20",
+  "date_reasoning": "Line 3 states \"20 August 2026\" as the date of the document.",
+  "segments": [
+    {
+      "start_line": 1,
+      "end_line": 1,
+      "kind": "heading"
+    },
+    {
+      "start_line": 3,
+      "end_line": 3,
+      "kind": "paragraph"
+    },
+    {
+      "start_line": 5,
+      "end_line": 5,
+      "kind": "paragraph"
+    },
+    {
+      "start_line": 9,
+      "end_line": 9,
+      "kind": "heading"
+    },
+    {
+      "start_line": 11,
+      "end_line": 11,
+      "kind": "paragraph"
+    },
+    {
+      "start_line": 13,
+      "end_line": 13,
+      "kind": "paragraph"
+    },
+    {
+      "start_line": 15,
+      "end_line": 15,
+      "kind": "paragraph"
+    },
+    {
+      "start_line": 17,
+      "end_line": 17,
+      "kind": "paragraph"
+    },
+    {
+      "start_line": 19,
+      "end_line": 19,
+      "kind": "paragraph"
+    }
+  ]
+}

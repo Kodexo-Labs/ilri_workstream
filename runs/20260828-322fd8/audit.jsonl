@@ -1,0 +1,25 @@
+{"at": "2026-08-28T10:33:54+00:00", "kind": "event", "stage": "created", "label": "Run created", "detail": "quarter 2026-Q3 \u00b7 4 documents \u00b7 as of 2026-08-28", "status": "progress", "as_of": "2026-08-28"}
+{"at": "2026-08-28T10:34:03+00:00", "kind": "llm_call", "stage": "load", "prompt_name": "load", "model": "claude-sonnet-4-6", "latency_ms": 4893, "input_tokens": 1576, "output_tokens": 273, "stop_reason": "tool_use"}
+{"at": "2026-08-28T10:34:04+00:00", "kind": "llm_call", "stage": "load", "prompt_name": "load", "model": "claude-sonnet-4-6", "latency_ms": 5301, "input_tokens": 1717, "output_tokens": 313, "stop_reason": "tool_use"}
+{"at": "2026-08-28T10:34:04+00:00", "kind": "llm_call", "stage": "load", "prompt_name": "load", "model": "claude-sonnet-4-6", "latency_ms": 5478, "input_tokens": 1744, "output_tokens": 355, "stop_reason": "tool_use"}
+{"at": "2026-08-28T10:34:07+00:00", "kind": "llm_call", "stage": "load", "prompt_name": "load", "model": "claude-sonnet-4-6", "latency_ms": 8363, "input_tokens": 1684, "output_tokens": 527, "stop_reason": "tool_use"}
+{"at": "2026-08-28T10:34:07+00:00", "kind": "event", "stage": "load", "label": "Working out what each document is", "detail": "", "status": "progress"}
+{"at": "2026-08-28T10:34:13+00:00", "kind": "llm_call", "stage": "read_document", "prompt_name": "read_cited", "model": "claude-sonnet-4-6", "latency_ms": 5910, "input_tokens": 1630, "output_tokens": 269, "stop_reason": "end_turn"}
+{"at": "2026-08-28T10:34:13+00:00", "kind": "event", "stage": "read_document", "label": "Reading", "detail": "document 1 \u2014 4 statements", "status": "progress"}
+{"at": "2026-08-28T10:34:13+00:00", "kind": "llm_call", "stage": "read_document", "prompt_name": "read_cited", "model": "claude-sonnet-4-6", "latency_ms": 5990, "input_tokens": 1729, "output_tokens": 340, "stop_reason": "end_turn"}
+{"at": "2026-08-28T10:34:13+00:00", "kind": "event", "stage": "read_document", "label": "Reading", "detail": "document 2 \u2014 9 statements", "status": "progress"}
+{"at": "2026-08-28T10:34:14+00:00", "kind": "llm_call", "stage": "read_document", "prompt_name": "read_cited", "model": "claude-sonnet-4-6", "latency_ms": 6964, "input_tokens": 1505, "output_tokens": 381, "stop_reason": "end_turn"}
+{"at": "2026-08-28T10:34:14+00:00", "kind": "event", "stage": "read_document", "label": "Reading", "detail": "document 3 \u2014 8 statements", "status": "progress"}
+{"at": "2026-08-28T10:34:14+00:00", "kind": "llm_call", "stage": "read_document", "prompt_name": "read_cited", "model": "claude-sonnet-4-6", "latency_ms": 7063, "input_tokens": 1674, "output_tokens": 358, "stop_reason": "end_turn"}
+{"at": "2026-08-28T10:34:14+00:00", "kind": "event", "stage": "read_document", "label": "Reading", "detail": "document 4 \u2014 8 statements", "status": "progress"}
+{"at": "2026-08-28T10:35:09+00:00", "kind": "llm_call", "stage": "reconcile", "prompt_name": "reconcile", "model": "claude-opus-4-6", "latency_ms": 54675, "input_tokens": 4502, "output_tokens": 2523, "stop_reason": "tool_use"}
+{"at": "2026-08-28T10:35:09+00:00", "kind": "event", "stage": "reconcile", "label": "Reconciling what the documents disagree about", "detail": "6 conflicts, 4 gaps", "status": "progress"}
+{"at": "2026-08-28T10:35:54+00:00", "kind": "llm_call", "stage": "assess", "prompt_name": "assess", "model": "claude-opus-4-6", "latency_ms": 45606, "input_tokens": 5183, "output_tokens": 1839, "stop_reason": "tool_use"}
+{"at": "2026-08-28T10:35:54+00:00", "kind": "event", "stage": "assess", "label": "Assessing against the success measure", "detail": "", "status": "progress"}
+{"at": "2026-08-28T10:35:59+00:00", "kind": "llm_call", "stage": "compose", "prompt_name": "compose", "model": "claude-opus-4-6", "latency_ms": 4177, "input_tokens": 5594, "output_tokens": 104, "stop_reason": "tool_use"}
+{"at": "2026-08-28T10:35:59+00:00", "kind": "llm_call", "stage": "compose", "prompt_name": "compose", "model": "claude-opus-4-6", "latency_ms": 4425, "input_tokens": 5507, "output_tokens": 111, "stop_reason": "tool_use"}
+{"at": "2026-08-28T10:36:02+00:00", "kind": "llm_call", "stage": "compose", "prompt_name": "compose", "model": "claude-opus-4-6", "latency_ms": 7436, "input_tokens": 5862, "output_tokens": 196, "stop_reason": "tool_use"}
+{"at": "2026-08-28T10:36:02+00:00", "kind": "event", "stage": "compose", "label": "Writing the narrative", "detail": "", "status": "progress"}
+{"at": "2026-08-28T10:36:02+00:00", "kind": "event", "stage": "validate", "label": "Checking against the CSF schema", "detail": "no problems", "status": "progress"}
+{"at": "2026-08-28T10:36:02+00:00", "kind": "event", "stage": "review", "label": "Ready for review", "detail": "paused \u2014 nothing is submitted until you say so", "status": "progress"}
+{"at": "2026-08-28T10:36:02+00:00", "kind": "event", "stage": "done", "label": "Draft ready", "detail": "", "status": "success"}

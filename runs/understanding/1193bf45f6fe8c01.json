@@ -1,0 +1,33 @@
+{
+  "title": "Programme status note — 30 June 2026",
+  "source_type": "Programme status note",
+  "date": "2026-06-30",
+  "date_reasoning": "The date appears in the document's own title and is confirmed by the \"Last modified 30 June 2026\" note in line 3.",
+  "segments": [
+    {
+      "start_line": 1,
+      "end_line": 1,
+      "kind": "heading"
+    },
+    {
+      "start_line": 3,
+      "end_line": 3,
+      "kind": "paragraph"
+    },
+    {
+      "start_line": 5,
+      "end_line": 5,
+      "kind": "heading"
+    },
+    {
+      "start_line": 7,
+      "end_line": 7,
+      "kind": "paragraph"
+    },
+    {
+      "start_line": 9,
+      "end_line": 9,
+      "kind": "paragraph"
+    }
+  ]
+}
