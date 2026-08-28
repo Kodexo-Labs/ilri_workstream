@@ -218,28 +218,56 @@ def _emit_blockquote(chunk_lines: list[str], chunk_start: int, emit) -> None:
 # --- Field tables ------------------------------------------------------------
 
 
+_OBJ_ID = re.compile(r"\b(OBJ-[A-Z0-9][-A-Z0-9]*)\b", re.I)
+_SEPARATOR_KEY = re.compile(r":?-{3,}:?$")
+
+
 def parse_field_table(text: str) -> dict[str, str]:
     """Read a `| Field | Value |` markdown table into a dict.
 
     Used for the objective record and the prior quarter's update. Generic on
     purpose: a different objective with different fields loads unchanged.
+    Leading pipes are optional, and "Objective ID" is the same field as
+    `Objective_ID` — uploaded packs are not always copy-pasted from the demo.
     """
     fields: dict[str, str] = {}
     for line in text.splitlines():
         stripped = line.strip()
-        if not stripped.startswith("|") or _TABLE_SEPARATOR.match(stripped):
+        if "|" not in stripped or _TABLE_SEPARATOR.match(stripped):
             continue
         cells = [cell.strip() for cell in stripped.strip("|").split("|")]
         if len(cells) < 2:
             continue
-        key = cells[0].strip("`* ")
+        key = re.sub(r"[\s\-]+", "_", cells[0].strip("`* "))
         value = cells[1].strip()
-        if not key or key.lower() in ("field", "value"):
+        if not key or key.lower() in ("field", "value") or _SEPARATOR_KEY.match(key):
             continue
         # Strip markdown emphasis from values so downstream sees plain text.
         value = re.sub(r"\*\*(.+?)\*\*", r"\1", value)
         fields[key] = value
     return fields
+
+
+def complete_objective_fields(text: str, fields: dict[str, str] | None = None) -> dict[str, str]:
+    """Fill Objective_ID from a heading when the table did not carry it.
+
+    `# Level2_Objectives — OBJ-2026-07` is a record, even if the table used a
+    different label or the file was saved as prose with the id only in the title.
+    """
+    result = dict(fields if fields is not None else parse_field_table(text))
+    current = (result.get("Objective_ID") or "").strip()
+    if current and current != "—":
+        return result
+    for key, value in result.items():
+        if key.lower() == "objective_id" and value.strip() and value.strip() != "—":
+            result["Objective_ID"] = value.strip()
+            return result
+    for line in text.splitlines()[:12]:
+        match = _OBJ_ID.search(line)
+        if match:
+            result["Objective_ID"] = match.group(1)
+            break
+    return result
 
 
 # --- Document loading --------------------------------------------------------

@@ -218,3 +218,75 @@ def test_updating_the_objective_keeps_fields_the_form_never_showed(tmp_path):
     assert reloaded["Region"] == "somewhere", "unshown fields must survive"
     assert reloaded["Countries_In_Scope"] == "A, B"
     assert reloaded["Last_Modified"]
+
+
+def test_marking_a_file_as_the_objective_keeps_its_name(tmp_path):
+    from app.config import Settings
+
+    data = tmp_path / "data"
+    (data / "evidence").mkdir(parents=True)
+    record = (
+        "# Level2_Objectives — OBJ-9\n\n"
+        "| Field | Value |\n|---|---|\n| `Objective_ID` | OBJ-9 |\n"
+    )
+    (data / "evidence" / "01-objective-record.md").write_text(record, encoding="utf-8")
+    settings = Settings(data_dir=data, runs_dir=tmp_path / "runs")
+
+    note = store.set_role(settings, "01-objective-record.md", "objective", from_role="evidence")
+
+    assert "objective record" in note
+    assert (data / "evidence" / "01-objective-record.md").exists()
+    assert not (data / "objective.md").exists()
+    path = store.objective_path(settings)
+    assert path is not None
+    assert path.name == "01-objective-record.md"
+    assert "OBJ-9" in path.read_text(encoding="utf-8")
+
+
+def test_an_upload_keeps_the_filename_the_director_chose(evidence):
+    path = store.add_uploaded(
+        evidence, "01_Objective_record (1).md", "# Level2_Objectives — OBJ-1\n\nBody.\n".encode()
+    )
+    assert path.name == "01_Objective_record (1).md"
+
+
+def test_uploading_does_not_assign_roles(tmp_path):
+    from app.config import Settings
+
+    data = tmp_path / "data"
+    evidence = data / "evidence"
+    evidence.mkdir(parents=True)
+    (evidence / "01_Objective_record.md").write_text(
+        "# Level2_Objectives — OBJ-2026-07\n\n"
+        "| Field | Value |\n|---|---|\n| `Objective_ID` | OBJ-2026-07 |\n",
+        encoding="utf-8",
+    )
+    (evidence / "02_Previous_quarter_update.md").write_text(
+        "# Prior\n\n| Field | Value |\n|---|---|\n| `Traffic_Light` | Green |\n",
+        encoding="utf-8",
+    )
+    settings = Settings(data_dir=data, runs_dir=tmp_path / "runs")
+
+    assert store.objective_path(settings) is None
+    assert store.prior_path(settings) is None
+    assert (evidence / "01_Objective_record.md").exists()
+    assert (evidence / "02_Previous_quarter_update.md").exists()
+
+
+def test_clearing_forgets_assigned_roles(tmp_path):
+    from app.config import Settings
+
+    data = tmp_path / "data"
+    (data / "evidence").mkdir(parents=True)
+    (data / "evidence" / "01_Objective_record.md").write_text("# Obj\n", encoding="utf-8")
+    settings = Settings(data_dir=data, runs_dir=tmp_path / "runs")
+    store.set_role(settings, "01_Objective_record.md", "objective")
+    assert store.objective_path(settings) is not None
+
+    store.clear_workspace(settings)
+
+    assert store.objective_path(settings) is None
+    assert not (data / "roles.json").exists()
+    (data / "evidence").mkdir(parents=True, exist_ok=True)
+    (data / "evidence" / "01_Objective_record.md").write_text("# Obj again\n", encoding="utf-8")
+    assert store.objective_path(settings) is None, "a later upload must not inherit the role"

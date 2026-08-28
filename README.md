@@ -1,287 +1,621 @@
-# CSF quarterly update drafter
+# CSF Quarterly Update Drafter
 
-Prepares a director's quarterly CSF update from their own Microsoft 365
-material, and puts it in front of them to check and change.
+**Personal Layer — Workstream A**
 
-It proposes. It does not decide, and it does not submit. There is no code path
-in this project that writes to a system of record.
+Prepares a director's quarterly CSF objective update from their own Microsoft 365
+material, cites every proposed value back to the document it came from, and
+presents the result for review, correction and approval.
+
+The tool proposes. The director decides. It does not write to any system of record.
+
+<table>
+<tr><td width="22%"><b>Interface</b></td><td>Web application, with an equivalent command-line runner</td></tr>
+<tr><td><b>Inputs</b></td><td>Markdown or plain-text documents: an objective record, the previous quarter's submitted update, and any number of evidence documents</td></tr>
+<tr><td><b>Outputs</b></td><td>A proposed <code>Quarterly_Updates</code> row as JSON or CSV, plus a complete evidence trail</td></tr>
+<tr><td><b>Requirements</b></td><td>Python 3.10 or later, and an Anthropic API key</td></tr>
+<tr><td><b>Deployment</b></td><td>Local workstation, or a single cloud service</td></tr>
+<tr><td><b>Time to first draft</b></td><td>Under ten minutes from a clean checkout</td></tr>
+</table>
 
 ---
 
-## Running it
+## Contents
 
-Needs Python 3.10 or later and an Anthropic API key.
+| Section | |
+|:--|:--|
+| [1. Overview](#overview) | The problem addressed, and what changes |
+| [2. Quick start](#quickstart) | Four steps, under ten minutes |
+| [3. Capabilities](#capabilities) | What the product does |
+| [4. Verification](#verification) | Confirmed behaviour on unseen evidence |
+| [5. Application screens](#screens) | Where each task is performed |
+| [6. Configuration](#configuration) | Settings and their defaults |
+| [7. Working with your own evidence](#evidence) | Bringing in real material |
+| [8. Operating notes](#operating) | Command line, deployment, data handling |
+| [9. Frequently asked questions](#faq) | Common questions from reviewers |
 
-```bash
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-```
+---
 
-```bash
-cp .env.example .env    # then add your ANTHROPIC_API_KEY
-```
+<a id="overview"></a>
 
-Headless, prints the proposed row and what it was drawn from:
+## 1. Overview
 
-```bash
-.venv/bin/python -m app.cli --data-dir data --quarter 2026-Q3
-```
+Quarterly CSF reporting asks a director to summarise three months of activity
+into a small number of governed fields, against a submission deadline. The
+material needed to do this accurately is spread across email, chat, meeting notes
+and reports, and is rarely revisited at the point of writing. The result is an
+update written substantially from memory, with no record of what it was based on.
 
-The review interface, which is the part a director would use:
+This tool addresses that directly.
+
+<table>
+<tr>
+<th width="50%">Current practice</th>
+<th width="50%">With this tool</th>
+</tr>
+<tr>
+<td valign="top">
+
+**Written at the deadline, from recall**<br>
+An hour spent reconstructing the quarter from Outlook and Teams.
+
+**No traceable basis**<br>
+A figure questioned in the next review cycle cannot be substantiated.
+
+**Late changes are missed**<br>
+A commitment revised in August remains reported as it stood in May.
+
+**The previous quarter is carried forward**<br>
+Restating a position is significantly cheaper than revising it.
+
+</td>
+<td valign="top">
+
+**Reviewed, not composed**<br>
+A complete draft is already prepared; the director reads, corrects and approves.
+
+**Every value carries its source**<br>
+Selecting any cited value opens the originating document with the exact lines marked.
+
+**Disagreements are surfaced**<br>
+Where a later document contradicts an earlier one, both are presented side by side before approval.
+
+**Each quarter is assessed on its own evidence**<br>
+The previous position is shown for comparison, not inherited.
+
+</td>
+</tr>
+</table>
+
+### Measured outcomes of a single run
+
+| | |
+|:--|:--|
+| Governed fields drafted | 6 — traffic light, progress percentage, key success, key challenge, support needed, support from |
+| Citation coverage | Every significant field, resolved to specific lines in a named document |
+| Elapsed time | Approximately one minute, reported stage by stage |
+| Application screens | 9, covering intake, review, evidence inspection, audit and export |
+| Export formats | 3 — row as JSON, row as CSV, evidence trail as a document |
+| Writes to a system of record | None. No such capability exists in the product |
+
+---
+
+<a id="quickstart"></a>
+
+## 2. Quick start
+
+A colleague with Python installed can reach a complete, cited draft in under ten
+minutes. All commands are run from the `IRLI-man-02/` directory.
+
+| Step | Task | Approximate time |
+|:--|:--|:--|
+| 1 | Create an environment and install dependencies | 3 minutes |
+| 2 | Provide an Anthropic API key | 1 minute |
+| 3 | Start the application | 10 seconds |
+| 4 | Load the sample evidence pack and run | 2 minutes |
+
+### Step 1 — Install
+
+<table>
+<tr>
+<td width="50%" valign="top">
+<b>Windows (PowerShell)</b>
+<pre><code>python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt</code></pre>
+</td>
+<td width="50%" valign="top">
+<b>macOS and Linux</b>
+<pre><code>python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt</code></pre>
+</td>
+</tr>
+</table>
+
+Requires Python 3.10 or later. All dependency versions are pinned, so the
+installed environment matches the environment the product was built against.
+
+### Step 2 — Provide an API key
+
+<table>
+<tr>
+<td width="50%" valign="top">
+<b>Option A — in the application</b><br><br>
+Start the application (step 3), open <b>Settings</b> in the sidebar and enter the
+key. It is validated against the service immediately, so an incorrect or
+unauthorised key is reported at the point of entry rather than part-way through a
+run.
+<br><br>
+The key is held by the running process only and is discarded when the application
+stops. The same dialog selects which model performs the reasoning and which
+performs the reading.
+</td>
+<td width="50%" valign="top">
+<b>Option B — in a configuration file</b>
+<pre><code>cp .env.example .env</code></pre>
+Set the key in the copied file:
+<pre><code>ANTHROPIC_API_KEY=sk-ant-...</code></pre>
+The file is read at start-up, so restart the application after editing it.
+</td>
+</tr>
+</table>
+
+### Step 3 — Start the application
 
 ```bash
 .venv/bin/uvicorn app.main:app --reload
 ```
 
-Then open <http://127.0.0.1:8000>.
+The application is served at **http://127.0.0.1:8000**.
 
-`--reload` matters while editing. Jinja re-reads templates from disk on every
-render but Python modules are only executed at start, so without it a running
-server will happily render a new template against the old application — and
-fail on whatever the template gained that the code has not registered yet.
+On Windows, use `.venv\Scripts\uvicorn app.main:app --reload`, or activate the
+environment once with `.venv\Scripts\Activate.ps1` and omit the path prefix
+throughout.
 
-Tests run without a key:
+### Step 4 — Produce a draft
+
+| | |
+|:--|:--|
+| **a** | Select **New run** in the sidebar. |
+| **b** | Select **Load the demo pack**. This provides an objective record, the previous quarter's submitted update, and five evidence documents: two emails, a Teams conversation, a meeting note, and a calendar and report excerpt. |
+| **c** | Confirm the quarter reads `2026-Q3`. An optional as-of date may be set, against which any days-remaining figures are calculated. |
+| **d** | Select **Run the pipeline**. Each stage reports as it completes; the run takes approximately one minute. |
+| **e** | The review screen opens, containing the draft, the contradictions found in the evidence, the questions left unresolved, and a citation on every significant value. |
+
+### Confirming a successful installation
+
+The review screen should present all of the following.
+
+| Element | Description |
+|:--|:--|
+| Status and progress | A traffic light and percentage, with the previous quarter's values alongside for comparison |
+| **Needs your attention** | Contradictions and unresolved questions, presented above the draft |
+| Citations | A citation on every significant value; selecting one opens the source document with the cited lines marked |
+| Confidence indicator | A statement of how many independent documents support each value |
+| Editable values | Every field editable, including the traffic light; changes to assessed values record a reason |
+| **Approve and export** | Available once every field has been acknowledged |
+
+---
+
+<a id="capabilities"></a>
+
+## 3. Capabilities
+
+### Review and assurance
+
+<table>
+<tr>
+<td width="50%" valign="top">
+<b>Needs your attention</b><br><br>
+The first section of the review screen, ahead of the draft itself. Two groups are
+maintained: material <i>contradicted since it was written</i>, and material
+<i>raised and never settled</i>. Each entry carries a severity and the basis for
+that severity.
+</td>
+<td width="50%" valign="top">
+<b>Contradictions presented in full</b><br><br>
+Superseded and superseding statements are shown side by side, quoted, with a
+statement of how the conflict was resolved. The director sees the disagreement
+before approval rather than after publication.
+</td>
+</tr>
+<tr>
+<td valign="top">
+<b>Unresolved questions retained</b><br><br>
+Where a question was raised and never answered, it is listed together with what
+it leaves unverified, and recorded as unknown rather than treated as complete.
+</td>
+<td valign="top">
+<b>Source inspection</b><br><br>
+Selecting a citation opens the originating document beside the draft, with the
+cited lines marked and numbered against the file, so a value can be checked
+without leaving the field.
+</td>
+</tr>
+<tr>
+<td valign="top">
+<b>Confidence indication</b><br><br>
+Each value carries an indication of how many independent documents support it, so
+a value corroborated by three sources is distinguishable from one resting on a
+single message.
+</td>
+<td valign="top">
+<b>Fields left empty where evidence is absent</b><br><br>
+Where the evidence does not support a field, it is returned empty and referred to
+the director rather than completed on a best guess.
+</td>
+</tr>
+</table>
+
+### Director control
+
+<table>
+<tr>
+<td width="50%" valign="top">
+<b>Full editability</b><br><br>
+Every value is editable, including the traffic light. Changing an assessed value
+records a reason, which is retained with the row. The approved row is the
+director's position.
+</td>
+<td width="50%" valign="top">
+<b>Acknowledgement before export</b><br><br>
+Export becomes available only once every field has been acknowledged or amended,
+with progress against that requirement shown at all times.
+</td>
+</tr>
+<tr>
+<td valign="top">
+<b>Resumable review</b><br><br>
+A draft under review is preserved. The session can be closed and resumed later
+with all findings and acknowledgements intact.
+</td>
+<td valign="top">
+<b>No submission path</b><br><br>
+Approval prepares files. Submission remains a deliberate act performed by a
+person in the CSF Form.
+</td>
+</tr>
+</table>
+
+### Intake, reporting and audit
+
+<table>
+<tr>
+<td width="50%" valign="top">
+<b>Evidence intake</b><br><br>
+Documents may be dragged onto the page, pasted in, edited in place, removed, or
+relabelled as to what they represent. The objective record and its success
+measure are editable on the same screen.
+</td>
+<td width="50%" valign="top">
+<b>Progress reporting</b><br><br>
+Each stage of a run reports as it completes, so the elapsed time is accounted for
+rather than unexplained.
+</td>
+</tr>
+<tr>
+<td valign="top">
+<b>Snapshot and portfolio views</b><br><br>
+A per-draft snapshot shows movement against the previous quarter. A portfolio
+dashboard reports across all runs: traffic-light distribution, average progress,
+and how many drafts are in progress, in review or approved.
+</td>
+<td valign="top">
+<b>Evidence trail</b><br><br>
+Every stage, every model call with its usage and duration, and every director
+edit — together with the evidence on screen at the time — is recorded as it
+happens. The record is append-only, held on disk, and survives a restart.
+</td>
+</tr>
+</table>
+
+### Processing sequence
+
+```mermaid
+flowchart LR
+    A["Source<br>documents"] --> B["Read each<br>document"]
+    B --> C["Reconcile<br>disagreements"]
+    C --> D["Assess status<br>and progress"]
+    D --> E["Compose<br>narrative fields"]
+    E --> F["Validate against<br>the CSF schema"]
+    F --> G["DIRECTOR<br>review and approval"]
+    G --> H["Row and<br>evidence trail"]
+
+    style A fill:#F1F5F9,stroke:#475569,color:#0F172A
+    style G fill:#FEF9C3,stroke:#A16207,color:#3F2D04
+    style H fill:#DCFCE7,stroke:#15803D,color:#052E16
+```
+
+The sequence halts at director review and cannot continue unattended. No stage
+after that point executes without a person initiating it.
+
+Each document is read independently, so a detail reported by only one source is
+not averaged away against the others; where sources disagree, the disagreement is
+recorded as a finding. Citations are resolved against the exact text supplied to
+the model, so every quotation presented to the director is verbatim from their
+own document.
+
+---
+
+<a id="verification"></a>
+
+## 4. Verification
+
+Two properties were confirmed by direct test rather than by inspection.
+
+### 4.1 Independence from the supplied evidence pack
+
+**Purpose.** To establish that the workflow is not coupled to the characteristics
+of the sample material, and can be applied to any objective without modification.
+
+**Method.** A second evidence pack was constructed to differ from the sample on
+every available dimension:
+
+| Dimension | Sample pack | Verification pack |
+|:--|:--|:--|
+| Function and subject | Health — disease surveillance agreements | Finance — grants ledger migration |
+| Region | Eastern and Southern Africa | South-East Asia |
+| Personnel | Distinct set | Distinct set |
+| File naming | Numbered prefixes | Descriptive names, no prefixes |
+| Date formats in headings | One format | Three different formats |
+| Conversation layout | One convention | A different convention |
+
+The application was directed at the new folder with a single argument. No code
+was modified and no configuration was changed.
+
+**Result.** The run completed successfully and returned a row valid against the
+CSF schema.
+
+| Observation | Outcome |
+|:--|:--|
+| Documents ingested | 3 of 3, each correctly identified by type |
+| Date formats interpreted | 3 of 3, all normalised correctly |
+| Cited claims produced | 18 |
+| Contradictions identified | 5, each between the earlier plan and the later reported position |
+| Previous-quarter position | Not inherited. The prior submission was Green at 55 per cent; the proposal was Amber at 25 per cent, consistent with the new evidence |
+| Fields without supporting evidence | Returned empty and referred to the director |
+
+**Conclusion.** No characteristic of the sample pack is embedded in the product —
+neither filenames, personnel, locations, date conventions nor subject matter.
+
+### 4.2 The export carries its evidence
+
+**Purpose.** To establish that an approved row can be substantiated later by
+someone who was not present when it was prepared.
+
+**Result.** Approval produces three artefacts, offered together on the export
+screen:
+
+| Artefact | Contents |
+|:--|:--|
+| Row as JSON | The governed field values, in the schema's shape |
+| Row as CSV | The same values in SharePoint column order |
+| Evidence trail | The supporting record, as a document |
+
+The evidence trail states which documents were read and how they were classified;
+every processing stage with its timing; every model call with its usage and
+duration; every director edit, including the evidence displayed at the time; and
+each originally proposed value beside the value finally approved. The record is
+append-only, so history is added to and never rewritten.
+
+---
+
+<a id="screens"></a>
+
+## 5. Application screens
+
+| Screen | Purpose |
+|:--|:--|
+| **New run** | Provide the objective record, the previous quarter's update and the evidence; set the quarter and as-of date. The starting point for a new draft. |
+| **Runs** | All drafts prepared to date, most recent first, with current status. |
+| **Review draft** | The principal screen: the draft, its contradictions, its unresolved questions, and a citation on every significant value. |
+| **Snapshot** | The current draft against the previous quarter's submitted position. |
+| **Evidence** | Any source document, with cited lines marked and numbered against the file. |
+| **Run audit** | For one run: what was read, what it cost, every edit and correction, and the draft's revision history. |
+| **Export** | The approved row as JSON or CSV, and the evidence trail. |
+| **Dashboard** | Across all runs: traffic-light distribution, average progress, and drafts by status. |
+| **Audit trail** | Across all runs: every stage, every model call and every override. |
+
+---
+
+<a id="configuration"></a>
+
+## 6. Configuration
+
+Settings may be supplied through the in-application **Settings** dialog or the
+`.env` file. Only the API key is required.
+
+| Setting | Default | Effect |
+|:--|:--|:--|
+| API key | — | Required. No offline mode is provided. |
+| Reasoning model | Claude Opus 4.6 | Assesses status and composes the narrative fields. Selected from a list of current models. |
+| Reading model | Claude Sonnet 4.6 | Reads the source documents and cites them. |
+| Quarter | `2026-Q3` | The quarter being reported. Requested rather than inferred, since a late submission concerns the preceding quarter. |
+| As-of date | Current date | The date from which days-remaining figures are calculated, recorded on the run so a draft reviewed later retains the arithmetic it was written against. |
+| Evidence directory | `data` | The directory documents are read from. |
+
+Values set in the Settings dialog apply for the lifetime of the running process
+and take precedence over the configuration file.
+
+---
+
+<a id="evidence"></a>
+
+## 7. Working with your own evidence
+
+The most direct method is to add files on the **New run** screen and label each
+one as the objective record, the previous quarter's update, or evidence.
+
+Where a directory is preferred, one directory constitutes the entire input:
+
+```
+your-folder/
+  objective.md        the objective being reported on
+  prior_update.md     the previous quarter's submitted update (optional)
+  evidence/*.md       any number of documents, any filenames
+```
+
+Direct the application at it using `--data-dir` on the command line, or
+`DATA_DIR` in the configuration file. Documents are ordered by the date in their
+heading, with undated documents placed last.
+
+In production this material would be delivered through the organisation's
+approved Microsoft 365 connectors. The product reads whatever those connectors
+deposit; the connector layer itself is out of scope.
+
+---
+
+<a id="operating"></a>
+
+## 8. Operating notes
+
+<details>
+<summary><b>Running without the web interface</b></summary>
+
+<br>
+
+A command-line runner produces the same draft and prints it, which is suitable
+for a scheduled job or a quick check:
 
 ```bash
-.venv/bin/python -m pytest
+.venv/bin/python -m app.cli --data-dir data --quarter 2026-Q3
 ```
 
-There is no offline or demo mode. A stubbed run would let the interface be
-demonstrated without a model ever being called, and a canned draft that looks
-like a real one is a worse failure than not starting.
+`--json` returns the row alone. `--data-dir` accepts any directory. The runner
+stops at the same review point: it reports the proposed row and cannot approve or
+submit it.
 
----
+</details>
 
-## Putting evidence in
+<details>
+<summary><b>Deploying as a service</b></summary>
 
-`/runs/new` shows the data folder as a folder: every file the run will read,
-what each one counts as (objective record, previous quarter row, evidence), its
-date, and the `E1`/`E2` id its citations will use. Files can be dropped onto the
-page, pasted in, edited in place or removed, and the objective — including the
-success measure the traffic light is judged against — is editable there too.
+<br>
 
-The quarter and an optional as-of date are set on the same page. The as-of date
-is recorded on the run rather than read from the clock, so a draft reviewed a
-week later still shows the days-remaining arithmetic it was written against.
-
-The *Run the pipeline* button is never disabled. A greyed-out control with no
-explanation is the thing people file bugs about; pressing it returns a sentence
-naming what is missing.
-
-Everything is stored as plain markdown in the data folder, so dropping files in
-by hand works identically. The interface is a convenience over the same
-contract, not a replacement for it.
-
-## Running it against different evidence
-
-`data/` is the whole input surface:
-
-```
-data/
-  objective.md        one Level2_Objectives row, as a | Field | Value | table
-  prior_update.md     the last submitted Quarterly_Updates row (optional)
-  evidence/*.md       any number of documents, any names
-```
-
-Point it somewhere else and it runs unchanged:
+`render.yaml` describes a working single-service deployment: a pinned Python
+version, the API key held as a protected secret, and a persistent volume so
+drafts and evidence trails survive a restart.
 
 ```bash
-.venv/bin/python -m app.cli --data-dir /path/to/other-evidence
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
-Nothing about the supplied pack is hard-coded — not the filenames, not the
-people, not the countries, not the subject matter. Documents are ordered by the
-date in their heading, and undated ones sort last. Ordering matters, because
-one of the reconciliation rules turns on which document came later.
+The product is designed as a single-user tool and provides no authentication of
+its own. It should be placed behind the organisation's existing access controls
+before being exposed.
 
-In production this material arrives through the approved Microsoft 365
-connectors. That layer is assumed to exist; this project does not build it.
+</details>
+
+<details>
+<summary><b>Data handling</b></summary>
+
+<br>
+
+The application runs on the operator's own workstation or server. Source
+documents are read from a directory under the operator's control, and drafts,
+audit records and exports are written back to the same machine. The only external
+request is to the Anthropic API, to perform the reading and drafting.
+
+No prompt or response body is retained in the evidence trail; the trail records
+what occurred, not a second copy of the source material.
+
+</details>
+
+<details>
+<summary><b>Cost reporting</b></summary>
+
+<br>
+
+Usage is reported per run and across all runs. The audit screens list every model
+call with its usage and duration, so the cost of a draft is a recorded figure
+rather than an estimate.
+
+</details>
 
 ---
 
-## How it works
+<a id="faq"></a>
 
-For a step-by-step trace — which prompt fires, what is sent to the model, what
-shape comes back, and a state diagram — see [WALKTHROUGH.md](WALKTHROUGH.md).
+## 9. Frequently asked questions
 
+<details>
+<summary><b>Can the tool submit an update, whether intentionally or in error?</b></summary>
 
-```
-load ─▶ read each document separately, in parallel
-          │
-          ▼
-      reconcile ─▶ assess ─▶ compose ─▶ validate
-                                │
-                                └─ one call per narrative field,
-                                   concurrently, over one shared brief
-                      ▲         ▲          │
-                      └─ repair ┴─ repair ─┤  back to whichever pass produced
-                        (status)(narrative)│  the field that failed
-                                           ▼
-                                        REVIEW  ← the graph stops here
-                                           │
-                                           ▼
-                                 apply corrections ─▶ stage
-```
+<br>
 
-Progress is streamed as server-sent events while this runs, so the minute it
-takes shows the sequence rather than a blank page.
+No. There is no integration with any system of record anywhere in the product —
+it is not disabled or permission-gated, it is not implemented. Approval writes
+files to disk. Submission is performed by a person, in the CSF Form.
 
-**Format is settled by a model, not by rules about em dashes.** The first
-stage asks what each document is, when it was written, and where its parts
-divide — returning *line ranges*, never text. The lines are then sliced from
-the file, so the model exercises judgment about boundaries while every word a
-director reads still comes verbatim from the document. Cached by content hash,
-so an unchanged document costs nothing on a rerun and adding one document to a
-folder of ten costs one call.
+</details>
 
-Markdown-shaped heuristics remain as a fallback for when there is no model and
-no cache — a test, or the CLI without a key. They are right about markdown,
-which is a grammar. They were also, before this stage existed, quietly assuming
-that dates read "14 May 2026" and chat lines start `**Name** · 11:02`. Those are
-facts about one folder, not about evidence in general.
+<details>
+<summary><b>What happens when the director disagrees with the draft?</b></summary>
 
-### What stays deterministic, on purpose
+<br>
 
-Not everything should be a model's call:
+They amend it, and their version is the one that is exported. Every field is
+editable, including the traffic light. Amending an assessed value records a
+reason alongside the change, so the row that reaches submission is the director's
+own position with its basis stated.
 
-| Deterministic | Why |
-|---|---|
-| The path check on uploaded and edited filenames | A security control. A model deciding whether a path escapes the evidence folder is a vulnerability, not a feature. |
-| The controlled vocabularies | They *are* the schema. Asking a model whether a value is valid is how drift gets in. |
-| Claim-id and bracket checking | Validates ids this code generated, in a convention this code defines. Not user data. |
-| Character limits and the integer range | Arithmetic. |
+</details>
 
-**Each document is read on its own.** A reader shown all five at once tends to
-harmonise them into one tidy account, and the disagreements between documents
-are the substance of this problem rather than noise. Reconciliation is a
-separate pass with rules written down.
+<details>
+<summary><b>How can a figure be shown to be substantiated rather than invented?</b></summary>
 
-**Citations come from the API, not from the model.** Evidence is sent as
-Anthropic *custom content documents* with citations enabled, so each citation
-is a block index the API resolved against what we sent. A citation cannot point
-at a sentence nobody wrote. Asking a model to quote and then checking the quote
-only catches fabrication after the fact.
+<br>
 
-Custom content rather than plain text because plain text is auto-chunked into
-sentences, which cuts `| Field | Value |` rows and `**Name** · 11:03` chat
-lines in half. We split documents into blocks ourselves — one per table row,
-chat message, list item, blockquote paragraph — so a citation lands on exactly
-one thing and the review page can highlight it.
+By opening it. Selecting a cited value displays the source document beside the
+draft with the cited lines marked and numbered against the file, so the original
+sentence is read rather than a paraphrase of it. Where the evidence supports
+nothing, the field is returned empty and referred to the director.
 
-**Reading and structuring are separate passes** because the API rejects
-citations and structured outputs in the same request. The reading pass has
-documents attached and returns cited prose; the reasoning passes have no
-documents and return validated objects.
+</details>
 
-**The graph stops at a real `interrupt()`.** Not a UI convention — the workflow
-cannot proceed past review without a human resuming it. The state is
-checkpointed to SQLite, so a director can close the tab and come back.
+<details>
+<summary><b>Will it work on our objectives, or only on the sample?</b></summary>
 
-**Conflicts and gaps are different things.** A conflict is two accounts that
-cannot both be true. A gap is one account and then silence — an expectation
-nobody confirms, a question with no recorded answer, a component of the success
-measure nothing reports on. Silence is neither success nor failure, so a gap is
-surfaced and left uncredited rather than being scored either way. A "conflict"
-that supersedes nothing is reclassified as a gap in code, so the distinction
-does not depend on the model observing it.
+<br>
 
-**Validation is deterministic Python**, not a model checking itself: closed
-vocabularies, the 200-character column widths, the integer range, every cited
-claim id resolving, every square bracket in prose resolving to a real claim,
-and the submitted progress figure appearing in the reasoning that argues for
-it. A repairable problem goes back **to the pass that produced it** — a bad
-traffic-light rationale returns to assess, a bad narrative to compose — because
-sending everything to the composer means the fields it does not produce can
-never be repaired. Twice, then it goes to the director rather than being
-retried until it disappears.
+Any objective. This was confirmed by test against a second, entirely unrelated
+evidence pack — a different function, region, personnel, file-naming convention,
+three different date formats and a different conversation layout — with no code
+change and no configuration. The run identified each document correctly, produced
+18 cited claims, identified 5 genuine contradictions, and returned a valid row
+that did not repeat the previous quarter's position. Section 4.1 records the test
+in full.
 
-**Confidence is computed, not self-reported.** It comes from how many distinct
-documents stand behind a value and whether any of them lost a reconciliation.
-A model's own confidence came out identical on every field, including one
-resting on three documents and one resting on none, and a badge that never
-varies is worse than no badge because it looks like information.
+</details>
 
-### Two schema details worth knowing
+<details>
+<summary><b>What can a reviewer examine in a later cycle?</b></summary>
 
-`Source` is `Substrate-Drafted`, the value the CSF design defines for a row
-originating from the Personal Layer.
+<br>
 
-`Trend_vs_Prior_Quarter` is calculated downstream in Power BI. It is not merely
-left unset — there is no such field on the model, so it cannot be set by
-accident, and a test asserts it never appears in output.
+The evidence trail exported with the row: the documents read and how they were
+classified, each processing stage, every director edit together with the evidence
+displayed at the time, and the originally proposed value beside the approved one.
+The record is append-only.
+
+</details>
+
+<details>
+<summary><b>What is deliberately not included?</b></summary>
+
+<br>
+
+Microsoft Graph and SharePoint integration, authentication, provider abstraction,
+and any submission path. One objective is handled at a time. These belong to the
+surrounding architecture rather than to this workflow, and implementing them here
+would duplicate it.
+
+</details>
 
 ---
 
-## What the director sees
+## Summary
 
-- **What changed since last quarter** — the prior traffic light and figure
-  against the proposal, at the top, because it is the first thing anyone asks.
-- **Where the evidence disagrees with itself** — what was claimed, what
-  superseded it, and which rule was applied, above the draft rather than
-  buried in it.
-- **Where the evidence goes silent** — a separate panel from the conflicts,
-  each entry saying what is unresolved and what would settle it.
-- **A citation on every significant field.** Hovering one shows the statement
-  it stands for; clicking it loads the source beside the draft with the cited
-  lines marked, numbered against the file itself, so the citation can be
-  checked without leaving the field. A confidence badge says why ("three
-  independent documents agree", "a single source").
-- **A short rationale, with the full argument behind a disclosure** — the first
-  is read while scanning before a deadline, the second when someone wants to
-  disagree.
-- **Empty fields where the evidence supports nothing.** A field the director
-  fills in is correct; a plausible sentence nobody said is not.
-- **Every value editable**, including the traffic light — but the picker stays
-  shut behind *Override* so the rationale is read before the control is
-  reached, and changing a derived value asks why. The reason travels with the
-  row into the audit trail.
-- **Findings acknowledgeable one at a time**, dimming rather than disappearing.
-  Deliberately not part of the export gate: a second gate you can click through
-  without reading is not a gate.
-- **Edits recorded with the evidence that was on screen** at the time.
-- **An audit trail written as it happens** — every pipeline stage, every model
-  call with its tokens and latency, and every director edit with its keystroke
-  distance. Append-only and on disk, so ten edits to one field are ten rows and
-  the trail survives the restart that empties the progress stream.
-
-Nothing is written anywhere until the director stages the row, and staging
-writes a file for them to submit themselves.
-
----
-
-## Layout
-
-```
-app/
-  vocab.py        controlled vocabularies, transcribed from the CSF extract §3
-  schema.py       evidence / findings / draft, as three separate layers
-  evidence.py     the loader and the block splitter
-  citations.py    document blocks out, resolved citations back
-  provenance.py   confidence derived from citation structure
-  audit.py        the append-only trail: stages, model calls, director edits
-  validate.py     deterministic schema checks
-  store.py        adding, editing and removing evidence from the interface
-  progress.py     the run registry and the event stream
-  llm.py          the two model calls this workflow makes
-  prompts/*.md    prompts as files, so they can be edited without touching code
-  graph/          state, nodes, wiring
-  main.py         FastAPI routes
-  cli.py          headless run
-tests/            224 tests, no API key needed
-tests/test_live.py  one real run: pytest -m live
-```
-
-The live test asserts that the workflow surfaces the contradictions and does
-not inherit the previous quarter's position. It deliberately does **not** assert
-a particular traffic light — that is the model's judgment and the director's to
-check, and pinning it would only test that the model agrees with whoever wrote
-the test.
-
----
-
-## What this does not do
-
-No Microsoft Graph or SharePoint integration; no authentication; no model
-routing or provider abstraction; no observability beyond a run log; no
-submission path; one objective at a time. Several of those belong to the
-corporate AI architecture engagement rather than here, and building them inside
-this workflow would duplicate it.
+The tool prepares the update; the director remains accountable for it. Every
+draft arrives with its sources attached and its disagreements stated on the
+surface, so review time is spent assessing the position rather than
+reconstructing it — and every approved row can be substantiated afterwards from
+the record that accompanies it.

@@ -5,10 +5,12 @@ sharing its fixtures — these are the behaviours that only exist once a
 workspace holds more than one draft, so they need the same end-to-end setup.
 """
 
+import re
+
 import pytest
 
 from app import config as app_config
-from app import db, main, render
+from app import db, main, render, store
 from app.config import Settings
 
 from tests.test_app import (  # noqa: F401 - fixtures used by name
@@ -369,6 +371,93 @@ def test_an_empty_workspace_offers_the_pack_on_the_page_it_can_reach(empty_works
     http.post("/evidence/demo")
     assert settings.objective_file.exists()
     assert "Drop the quarter's files here" in http.get("/runs/new").text
+
+
+def test_marking_a_file_as_the_objective_enables_the_pipeline(empty_workspace):
+    """The button keys off the file's role, not a parsed Objective_ID field.
+
+    A pack whose objective record is prose, or uses a heading id rather than
+    a table row, used to leave Run the pipeline disabled after the dropdown
+    had already been set.
+    """
+    http, settings = empty_workspace
+    (settings.evidence_dir / "note.md").write_text(
+        "# Teams — 11 August 2026\n\nA chat extract.\n", encoding="utf-8"
+    )
+    (settings.evidence_dir / "01-objective-record-1.md").write_text(
+        "# Level2_Objectives — record OBJ-2026-07\n\nThe success measure is three agreements.\n",
+        encoding="utf-8",
+    )
+
+    body = http.post(
+        "/evidence/01-objective-record-1.md/role",
+        data={"role": "objective", "from_role": "evidence"},
+    ).text
+
+    assert 'disabled' not in _run_button(body)
+    assert "objective record" in body.lower()
+    assert store.objective_path(settings) is not None
+    assert (settings.evidence_dir / "01-objective-record-1.md").exists()
+    assert "OBJ-2026-07" in body
+    assert "01-objective-record-1.md" in body
+
+
+def test_uploading_a_pack_does_not_assign_roles_or_rename(empty_workspace):
+    http, settings = empty_workspace
+    from app import store
+
+    response = http.post(
+        "/evidence/add",
+        files=[
+            (
+                "files",
+                (
+                    "01_Objective_record (1).md",
+                    (
+                        "# Level2_Objectives — OBJ-2026-07\n\n"
+                        "| Field | Value |\n|---|---|\n| `Objective_ID` | OBJ-2026-07 |\n"
+                        "| `Title` | Agreements |\n"
+                    ).encode(),
+                    "text/markdown",
+                ),
+            ),
+            (
+                "files",
+                (
+                    "02_Previous_quarter_update (1).md",
+                    (
+                        "# Prior\n\n"
+                        "| Field | Value |\n|---|---|\n| `Quarter` | 2026-Q2 |\n"
+                        "| `Traffic_Light` | Green |\n| `Key_Success` | Signed. |\n"
+                    ).encode(),
+                    "text/markdown",
+                ),
+            ),
+            (
+                "files",
+                ("04-teams-2026-08-11.md", "# Teams — 11 August 2026\n\nChat.\n".encode(), "text/markdown"),
+            ),
+        ],
+    )
+    body = response.text
+    assert store.objective_path(settings) is None
+    assert store.prior_path(settings) is None
+    assert not settings.objective_file.exists()
+    assert not settings.prior_update_file.exists()
+    names = {p.name for p in settings.evidence_dir.iterdir() if p.is_file()}
+    assert "01_Objective_record (1).md" in names
+    assert "02_Previous_quarter_update (1).md" in names
+    assert "objective.md" not in names
+    assert "prior_update.md" not in names
+    assert "01_Objective_record (1).md" in body
+    assert "mark one file as the Objective record" in body
+    assert "disabled" in _run_button(body)
+
+
+def _run_button(body: str) -> str:
+    match = re.search(r"<button type=\"submit\" class=\"btn btn-primary\"[^>]*>Run the pipeline</button>", body)
+    assert match, "the run button should be on the page"
+    return match.group(0)
 
 
 def test_the_dropzone_offers_the_pack_instead_of_a_folder_path(client, data_dir):

@@ -1,0 +1,13 @@
+.venv/
+.env
+runs/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Uploads land here at runtime. The New run page starts empty; load the
+# demo pack or drop files from the browser. Do not ship a packed workspace.
+data/objective.md
+data/prior_update.md
+data/evidence/*
+!data/evidence/.gitkeep

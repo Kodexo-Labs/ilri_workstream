@@ -1425,8 +1425,8 @@ def test_several_uploads_are_accepted_together(client, data_dir):
     )
     assert "All docs uploaded" in response.text
     assert "note-a.md, note-b.md" not in response.text
-    names = {p.name for p in (data_dir / "evidence").glob("*.md")}
-    assert {"note-a.md", "note-b.md", "note-c.md"} <= names
+    names = {p.name for p in (data_dir / "evidence").glob("*")}
+    assert {"note-a.md", "note-b.md", "note-c.txt"} <= names
     assert "5 evidence documents" in response.text
 
 

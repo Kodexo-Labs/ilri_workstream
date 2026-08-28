@@ -627,15 +627,15 @@ def workspace_context() -> dict:
     objective = workspace["objective"]
 
     # Everything currently on disk, in the order the pipeline would read it:
-    # the reference records first (when they exist), then the evidence
+    # the assigned records first (when they exist), then the evidence
     # oldest-first. Missing files are omitted rather than listed as ghosts.
     files = []
-    if settings.objective_file.exists():
-        files.append(_file_row(settings.objective_file, "objective", "Objective record"))
-    if settings.prior_update_file.exists():
-        files.append(
-            _file_row(settings.prior_update_file, "prior", "Previous quarter row")
-        )
+    obj = store.objective_path(settings)
+    prior = store.prior_path(settings)
+    if obj is not None:
+        files.append(_file_row(obj, "objective", "Objective record"))
+    if prior is not None:
+        files.append(_file_row(prior, "prior", "Previous quarter row"))
     files += [
         _file_row(
             Path(doc.source_path), "evidence", "Evidence", doc.date_label, doc.doc_id
@@ -643,6 +643,10 @@ def workspace_context() -> dict:
         for doc in docs
     ]
 
+    has_objective = obj is not None
+    # The pipeline runs on the file, not on a parsed Objective_ID. Requiring
+    # the table field used to leave the button disabled after a director had
+    # already marked a file as the objective record.
     return {
         "objective": objective,
         "prior_update": workspace["prior_update"],
@@ -651,7 +655,8 @@ def workspace_context() -> dict:
         "quarter": settings.quarter,
         "as_of": dt.date.today().isoformat(),
         "data_dir": settings.data_dir,
-        "ready": bool(docs) and bool(objective.get("Objective_ID")) and has_api_key(),
+        "has_objective": has_objective,
+        "ready": bool(docs) and has_objective and has_api_key(),
         "message": "",
         "error": "",
     }
@@ -823,7 +828,12 @@ async def delete_evidence(request: Request, filename: str):
 
 
 @app.post("/evidence/{filename}/role")
-async def set_evidence_role(request: Request, filename: str, role: str = Form(default="")):
+async def set_evidence_role(
+    request: Request,
+    filename: str,
+    role: str = Form(default=""),
+    from_role: str = Form(default=""),
+):
     """Move a file between evidence, the objective record and the prior row.
 
     index.html holds files in the browser, so changing a role is a dropdown and
@@ -835,7 +845,7 @@ async def set_evidence_role(request: Request, filename: str, role: str = Form(de
         return _workspace(request, error=f"{role!r} is not a role.")
 
     try:
-        moved = store.set_role(settings, filename, role)
+        moved = store.set_role(settings, filename, role, from_role=from_role)
     except store.StoreError as error:
         return _workspace(request, error=str(error))
 
@@ -954,12 +964,13 @@ async def save_objective(
     Target_Completion: str = Form(default=""),
 ):
     existing = (
-        parse_field_table(settings.objective_file.read_text(encoding="utf-8"))
-        if settings.objective_file.exists()
+        parse_field_table(obj.read_text(encoding="utf-8"))
+        if (obj := store.objective_path(settings)) is not None
         else {}
     )
+    target = obj if obj is not None else settings.objective_file
     store.update_objective(
-        settings.objective_file,
+        target,
         existing,
         {
             "Objective_ID": Objective_ID.strip() or existing.get("Objective_ID", ""),

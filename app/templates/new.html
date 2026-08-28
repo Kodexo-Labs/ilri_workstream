@@ -40,23 +40,25 @@
               <span class="tiny subtle nowrap">{{ file.date_label or "no date read" }} · {{ file.size_k }}k chars</span>
             </span>
             <span class="file-actions">
-              <form method="post" action="/evidence/{{ file.name }}/role">
+              <form method="post" action="/evidence/{{ file.name | urlencode }}/role">
+                <input type="hidden" name="from_role" value="{{ file.role }}">
                 <select class="role-sel" name="role" data-action="set-role" aria-label="Role for {{ file.name }}">
                   <option value="evidence"{% if file.role == 'evidence' %} selected{% endif %}>Evidence</option>
                   <option value="objective"{% if file.role == 'objective' %} selected{% endif %}>Objective record</option>
                   <option value="prior"{% if file.role == 'prior' %} selected{% endif %}>Previous quarter row</option>
                 </select>
+                <button type="submit" class="visually-hidden">Set role</button>
                 <noscript><button type="submit" class="btn btn-ghost btn-sm">set</button></noscript>
               </form>
-              <a class="btn btn-sm" href="/evidence/{{ file.name }}/edit" aria-label="Edit {{ file.name }}">Edit</a>
-              <form method="post" action="/evidence/{{ file.name }}/delete">
+              <a class="btn btn-sm" href="/evidence/{{ file.name | urlencode }}/edit" aria-label="Edit {{ file.name }}">Edit</a>
+              <form method="post" action="/evidence/{{ file.name | urlencode }}/delete">
                 <button type="submit" class="btn btn-ghost btn-sm" aria-label="Remove {{ file.name }}">✕</button>
               </form>
             </span>
           </div>
         {% endfor %}
       </div>
-      <p class="tiny subtle" style="margin-top:var(--s3)">{{ files | length }} {{ "file" if files | length == 1 else "files" }} · {% if objective.get("Objective_ID") %}objective record identified{% else %}⚠ mark one file as the Objective record{% endif %} · {{ docs | length }} evidence {{ "document" if docs | length == 1 else "documents" }}</p>
+      <p class="tiny subtle" style="margin-top:var(--s3)">{{ files | length }} {{ "file" if files | length == 1 else "files" }} · {% if has_objective %}{% if objective.get("Objective_ID") %}objective record identified{% else %}objective record marked{% endif %}{% else %}⚠ mark one file as the Objective record{% endif %} · {{ docs | length }} evidence {{ "document" if docs | length == 1 else "documents" }}</p>
     {% endif %}
     {% if not docs %}<p class="tiny subtle" style="margin-top:var(--s3)">⚠ Nothing to read yet. Add an email, a chat extract, a meeting note — whatever the director would have.</p>{% endif %}
   </div>
@@ -97,7 +99,7 @@
       <button type="submit" class="btn btn-primary"{% if not ready %} disabled{% endif %}>Run the pipeline</button>
     </form>
     <a class="btn btn-ghost" href="/">Back to runs</a>
-    {% if not ready %}<span class="tiny subtle">{% if not docs %}No evidence to read — add some above. {% endif %}{% if not has_key %}No model connected — add a key. {% endif %}Needs an objective record, at least one evidence file, and a model connected.</span>{% endif %}
+    {% if not ready %}<span class="tiny subtle">{% if not has_objective %}No objective record — mark one file as the Objective record. {% endif %}{% if not docs %}No evidence to read — add some above. {% endif %}{% if not has_key %}No model connected — add a key. {% endif %}</span>{% endif %}
   </div>
 </div>
 {% endblock %}

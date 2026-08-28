@@ -566,7 +566,14 @@
     // Changing a file's role moves the file, so the select submits its form.
     if (input.classList && input.classList.contains("role-sel")) {
       var form = input.closest("form");
-      if (form) { if (form.requestSubmit) form.requestSubmit(); else form.submit(); }
+      if (form) {
+        try {
+          if (form.requestSubmit) form.requestSubmit();
+          else form.submit();
+        } catch (err) {
+          form.submit();
+        }
+      }
       return;
     }
 

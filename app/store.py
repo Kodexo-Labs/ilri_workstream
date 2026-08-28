@@ -13,6 +13,7 @@ someone dropped them in by hand.
 from __future__ import annotations
 
 import datetime as dt
+import json
 import re
 import unicodedata
 from pathlib import Path
@@ -62,6 +63,44 @@ def unique_path(evidence_dir: Path, slug: str) -> Path:
     return candidate
 
 
+_UNSAFE_FILENAME = re.compile(r'[<>:"|?*]')
+
+
+def original_filename(filename: str) -> str:
+    """The name the director chose, minus any path. Not a slug."""
+    name = Path(filename).name
+    if (
+        not name
+        or name in {".", ".."}
+        or name.startswith(".")
+        or "/" in name
+        or "\\" in name
+        or _UNSAFE_FILENAME.search(name)
+    ):
+        raise StoreError(f"{filename!r} is not a valid document name")
+    suffix = Path(name).suffix.lower()
+    if suffix not in MARKDOWN_SUFFIXES:
+        raise StoreError(f"{filename} is not markdown or plain text.")
+    if not Path(name).stem.strip():
+        raise StoreError(f"{filename!r} is not a valid document name")
+    return name
+
+
+def unique_named(directory: Path, filename: str) -> Path:
+    """Keep the original filename. Number it only when that name is taken."""
+    candidate = directory / filename
+    if not candidate.exists():
+        return candidate
+    stem = Path(filename).stem
+    suffix = Path(filename).suffix
+    counter = 2
+    while True:
+        candidate = directory / f"{stem}-{counter}{suffix}"
+        if not candidate.exists():
+            return candidate
+        counter += 1
+
+
 def compose_markdown(title: str, body: str, date: str = "") -> str:
     """Build a document the loader can read back.
 
@@ -107,11 +146,12 @@ def add_uploaded(evidence_dir: Path, filename: str, content: bytes) -> Path:
         raise StoreError(f"{filename} is not valid UTF-8 text.") from error
 
     evidence_dir.mkdir(parents=True, exist_ok=True)
-    path = unique_path(evidence_dir, slugify(Path(filename).stem))
+    name = original_filename(filename)
+    path = unique_named(evidence_dir, name)
 
     # Give it a heading if it has none, so the loader has a title to show.
     if not text.lstrip().startswith("#"):
-        text = f"# {Path(filename).stem}\n\n{text}"
+        text = f"# {Path(name).stem}\n\n{text}"
     path.write_text(text, encoding="utf-8")
     return path
 
@@ -131,6 +171,7 @@ def remove_workspace(settings, filename: str) -> None:
     """
     path, _role = resolve_workspace_document(settings, filename)
     path.unlink()
+    forget_role(settings, filename)
 
 
 def clear_workspace(settings) -> list[str]:
@@ -138,7 +179,8 @@ def clear_workspace(settings) -> list[str]:
 
     The demo pack is the way back in. Draft runs are left alone — they have
     their own delete — so clearing the input folder does not erase a review
-    already in flight.
+    already in flight. Assigned roles go with the files; a later upload does
+    not inherit them.
     """
     removed: list[str] = []
     for path in (settings.objective_file, settings.prior_update_file):
@@ -151,6 +193,9 @@ def clear_workspace(settings) -> list[str]:
             if path.is_file() and path.suffix.lower() in MARKDOWN_SUFFIXES:
                 removed.append(path.name)
                 path.unlink()
+    roles_path = _roles_path(settings)
+    if roles_path.exists():
+        roles_path.unlink()
     return removed
 
 
@@ -169,13 +214,25 @@ def write_document(evidence_dir: Path, filename: str, text: str) -> Path:
 def resolve_workspace_document(settings, filename: str) -> tuple[Path, str]:
     """Find a named file wherever the workspace keeps it.
 
-    The objective record and the prior row live next to the evidence folder,
-    not inside it. The edit link is the same for every file on the setup
-    screen, so this has to look in all three places rather than 404 on the
-    two the pipeline actually needs.
+    Uploaded files keep their names in the evidence folder. The demo pack
+    still writes the objective record and prior row beside that folder. The
+    edit link is the same for every file on the setup screen.
     """
     if not filename or "/" in filename or "\\" in filename or filename.startswith("."):
         raise StoreError(f"{filename!r} is not a valid document name")
+
+    roles = read_roles(settings)
+    evidence_dir = settings.evidence_dir
+    try:
+        target = safe_target(evidence_dir, filename)
+    except StoreError:
+        target = None
+    if target is not None and target.exists():
+        if roles.get("objective") == filename:
+            return target, "objective"
+        if roles.get("prior") == filename:
+            return target, "prior"
+        return target, "evidence"
 
     named = {
         settings.objective_file.name: (settings.objective_file, "objective"),
@@ -185,10 +242,7 @@ def resolve_workspace_document(settings, filename: str) -> tuple[Path, str]:
     if special is not None and special[0].exists():
         return special
 
-    target = safe_target(settings.evidence_dir, filename)
-    if not target.exists():
-        raise StoreError(f"{filename} is not there.")
-    return target, "evidence"
+    raise StoreError(f"{filename} is not there.")
 
 
 def write_workspace_document(path: Path, text: str) -> Path:
@@ -199,59 +253,162 @@ def write_workspace_document(path: Path, text: str) -> Path:
 
 
 # --- roles -------------------------------------------------------------------
+# A file's role is a label the director sets, not a rename and not a guess.
+# Uploaded documents stay in the evidence folder under the name they arrived
+# with. `roles.json` records which of those names is the objective record and
+# which is the previous quarter row. The demo pack still writes the two
+# reference files beside the folder; those are used only when nothing has
+# been assigned yet.
 
 
-def set_role(settings, filename: str, role: str) -> str:
-    """Move a document between evidence, the objective record and the prior row.
+def _roles_path(settings) -> Path:
+    return settings.data_dir / "roles.json"
 
-    A file's role in this build is its location, so the role dropdown moves it.
-    Whatever it displaces is moved into the evidence folder rather than deleted:
-    a mis-click on a dropdown must not destroy the objective record, and a file
-    sitting in evidence is visible and recoverable.
 
-    Returns a sentence describing what moved, for the toast.
-    """
-    evidence_dir = settings.evidence_dir
-    destinations = {
-        "objective": settings.objective_file,
-        "prior": settings.prior_update_file,
+def read_roles(settings) -> dict[str, str]:
+    path = _roles_path(settings)
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, TypeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {
+        key: name
+        for key, name in data.items()
+        if key in ("objective", "prior") and isinstance(name, str) and name
     }
 
-    source = None
-    for candidate in (settings.objective_file, settings.prior_update_file):
-        if candidate.name == filename and candidate.exists():
-            source = candidate
-    if source is None:
-        source = safe_target(evidence_dir, filename)
-    if not source.exists():
-        raise StoreError(f"{filename} is not there.")
 
-    target = destinations.get(role)
+def write_roles(settings, roles: dict[str, str]) -> None:
+    path = _roles_path(settings)
+    cleaned = {
+        key: name
+        for key, name in roles.items()
+        if key in ("objective", "prior") and name
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(cleaned, indent=2) + "\n", encoding="utf-8")
 
-    if target is None:
-        # Back to evidence.
-        if source.parent == evidence_dir:
+
+def forget_role(settings, filename: str) -> None:
+    roles = read_roles(settings)
+    changed = False
+    for key in ("objective", "prior"):
+        if roles.get(key) == filename:
+            del roles[key]
+            changed = True
+    if changed:
+        write_roles(settings, roles)
+
+
+def _existing(path: Path) -> Path | None:
+    try:
+        if path.is_file():
+            return path
+    except OSError:
+        return None
+    return None
+
+
+def _path_for_role(settings, role: str) -> Path | None:
+    """The file marked as `role`, if any.
+
+    Once the director has used the role dropdown, `roles.json` is the only
+    source — leftover demo files are not silently adopted. Until then the
+    demo pack's copies beside the evidence folder still count.
+    """
+    slot = settings.objective_file if role == "objective" else settings.prior_update_file
+    roles_exist = _roles_path(settings).is_file()
+    name = read_roles(settings).get(role)
+    if name:
+        try:
+            path = safe_target(settings.evidence_dir, name)
+            if path.exists():
+                return path
+        except StoreError:
+            pass
+        if name == settings.objective_file.name and settings.objective_file.exists():
+            return settings.objective_file
+        if name == settings.prior_update_file.name and settings.prior_update_file.exists():
+            return settings.prior_update_file
+        return None
+    if roles_exist:
+        return None
+    return _existing(slot)
+
+
+def objective_path(settings) -> Path | None:
+    """The file marked as the objective record, or the demo pack's copy."""
+    return _path_for_role(settings, "objective")
+
+
+def prior_path(settings) -> Path | None:
+    """The file marked as the previous quarter row, or the demo pack's copy."""
+    return _path_for_role(settings, "prior")
+
+
+def assigned_paths(settings) -> set[Path]:
+    """Resolved paths the pipeline must not also read as evidence."""
+    found: set[Path] = set()
+    for path in (objective_path(settings), prior_path(settings)):
+        if path is None:
+            continue
+        try:
+            found.add(path.resolve())
+        except OSError:
+            found.add(path)
+    return found
+
+
+def set_role(settings, filename: str, role: str, from_role: str = "") -> str:
+    """Assign a file as evidence, the objective record or the prior row.
+
+    The file is not moved and not renamed. Changing the dropdown only
+    updates which name is recorded as that role. `from_role` is accepted
+    so the form can post it; lookup is by filename.
+    """
+    del from_role
+    path, current = resolve_workspace_document(settings, filename)
+    if role not in ("evidence", "objective", "prior"):
+        raise StoreError(f"{role!r} is not a role.")
+
+    if role == current:
+        if role == "evidence":
             return f"{filename} is already evidence."
-        moved = unique_path(evidence_dir, slugify(source.stem))
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        moved.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
-        source.unlink()
-        return f"{filename} is now evidence, as {moved.name}."
+        label = "objective record" if role == "objective" else "previous quarter row"
+        return f"{filename} is already the {label}."
 
-    if source == target:
-        return f"{filename} is already the {role} record."
-
+    roles = read_roles(settings)
     displaced = ""
-    if target.exists():
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        kept = unique_path(evidence_dir, slugify(target.stem))
-        kept.write_text(target.read_text(encoding="utf-8"), encoding="utf-8")
-        displaced = f" The previous one was kept as {kept.name}."
 
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
-    if source.parent == evidence_dir:
-        source.unlink()
+    if role == "evidence":
+        if path in (settings.objective_file, settings.prior_update_file):
+            settings.evidence_dir.mkdir(parents=True, exist_ok=True)
+            dest = unique_named(settings.evidence_dir, path.name)
+            dest.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+            path.unlink()
+            forget_role(settings, filename)
+            if dest.name != filename:
+                return f"{filename} is now evidence, as {dest.name}."
+            return f"{filename} is now evidence."
+        forget_role(settings, filename)
+        return f"{filename} is now evidence."
+
+    previous = roles.get(role)
+    if previous and previous != filename:
+        displaced = f" {previous} is evidence again."
+
+    other = "prior" if role == "objective" else "objective"
+    if roles.get(other) == filename:
+        del roles[other]
+
+    # A file sitting in the demo pack's slot keeps that name; uploaded
+    # files keep theirs. Either way the assignment is the name, not a copy.
+    roles[role] = path.name
+    write_roles(settings, roles)
 
     label = "objective record" if role == "objective" else "previous quarter row"
     return f"{filename} is now the {label}.{displaced}"

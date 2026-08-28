@@ -12,6 +12,7 @@ from app.evidence import (
     load_evidence,
     parse_date,
     parse_field_table,
+    complete_objective_fields,
     split_blocks,
 )
 
@@ -101,6 +102,21 @@ def test_parse_field_table_strips_emphasis_and_skips_headers():
 def test_parse_field_table_is_generic_over_field_names():
     parsed = parse_field_table("| Field | Value |\n|---|---|\n| `Anything_At_All` | a value |")
     assert parsed["Anything_At_All"] == "a value"
+
+
+def test_parse_field_table_accepts_spaced_keys_and_unpiped_rows():
+    parsed = parse_field_table(
+        "Field | Value\n--- | ---\nObjective ID | OBJ-2026-07\nSuccess Measure | Three signed agreements"
+    )
+    assert parsed["Objective_ID"] == "OBJ-2026-07"
+    assert parsed["Success_Measure"] == "Three signed agreements"
+
+
+def test_objective_id_is_read_from_the_heading_when_the_table_omits_it():
+    fields = complete_objective_fields(
+        "# Level2_Objectives — record OBJ-2026-07\n\nProse, not a field table.\n"
+    )
+    assert fields["Objective_ID"] == "OBJ-2026-07"
 
 
 # --- document loading --------------------------------------------------------
